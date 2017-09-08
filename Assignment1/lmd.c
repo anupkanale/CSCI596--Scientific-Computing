@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
 	}
 	cpu2 = ((double) clock())/CLOCKS_PER_SEC;
 	cpu = cpu2-cpu1;
-	printf("Execution time (s) = %le\n",cpu);
+	printf("%le",cpu);
 	return 0;
 }
 
