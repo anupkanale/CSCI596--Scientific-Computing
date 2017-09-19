@@ -11,20 +11,30 @@ USAGE
 #include <math.h>
 #include "lmd.h"
 #include <time.h>
+double flopCount; // Added by Anup
 
 int main(int argc, char **argv) {
 	double cpu, cpu1, cpu2;
 	InitParams();
 	InitConf();
 	ComputeAccel(); /* Computes initial accelerations */
+	flopCount = 0.0;
+
 	cpu1 = ((double) clock())/CLOCKS_PER_SEC;
+
 	for (stepCount=1; stepCount<=StepLimit; stepCount++) {
 		SingleStep();
 		if (stepCount%StepAvg == 0) EvalProps();
 	}
+
 	cpu2 = ((double) clock())/CLOCKS_PER_SEC;
 	cpu = cpu2-cpu1;
-	printf("%le",cpu);
+	printf("%le\n",cpu);
+
+	flopCount += 3;
+	printf("# of floating-point operations = %le\n",flopCount);
+	printf("Mflop/s performance = %le\n",flopCount/cpu/1.0e6);
+
 	return 0;
 }
 
@@ -129,16 +139,20 @@ void ComputeAccel() {
 	lcyz = lc[1]*lc[2];
 	lcxyz = lc[0]*lcyz;
 
+	flopCount += 2.0;
+
 	/* Reset the headers, head */
 	for (c=0; c<lcxyz; c++) head[c] = EMPTY;
 
 	/* Scan atoms to construct headers, head, & linked lists, lscl */
 
 	for (i=0; i<nAtom; i++) {
-		for (a=0; a<3; a++) mc[a] = r[i][a]/rc[a];
 
+		for (a=0; a<3; a++) mc[a] = r[i][a]/rc[a];
+		flopCount += 3*1;
 		/* Translate the vector cell index, mc, to a scalar cell index */
 		c = mc[0]*lcyz+mc[1]*lc[2]+mc[2];
+		flopCount += 4;
 
 		/* Link to the previous occupant (or EMPTY if you're the 1st) */
 		lscl[i] = head[c];
@@ -150,6 +164,7 @@ void ComputeAccel() {
   /* Calculate pair interaction-----------------------------------------------*/
 
 	rrCut = RCUT*RCUT;
+	flopCount += 1;
 
 	/* Scan inner cells */
 	for (mc[0]=0; mc[0]<lc[0]; (mc[0])++)
@@ -158,6 +173,8 @@ void ComputeAccel() {
 
 		/* Calculate a scalar cell index */
 		c = mc[0]*lcyz+mc[1]*lc[2]+mc[2];
+		flopCount +=4.0;
+
 		/* Skip this cell if empty */
 		if (head[c] == EMPTY) continue;
 
@@ -165,6 +182,7 @@ void ComputeAccel() {
 		for (mc1[0]=mc[0]-1; mc1[0]<=mc[0]+1; (mc1[0])++)
 		for (mc1[1]=mc[1]-1; mc1[1]<=mc[1]+1; (mc1[1])++)
 		for (mc1[2]=mc[2]-1; mc1[2]<=mc[2]+1; (mc1[2])++) {
+
 			/* Periodic boundary condition by shifting coordinates */
 			for (a=0; a<3; a++) {
 				if (mc1[a] < 0)
@@ -179,6 +197,9 @@ void ComputeAccel() {
 			    +((mc1[1]+lc[1])%lc[1])*lc[2]
 			    +((mc1[2]+lc[2])%lc[2]);
 			/* Skip this neighbor cell if empty */
+			
+			flopCount +=10;
+
 			if (head[c1] == EMPTY) continue;
 
 			/* Scan atom i in cell c */
@@ -195,19 +216,28 @@ void ComputeAccel() {
 						for (rr=0.0, a=0; a<3; a++) {
 							dr[a] = r[i][a]-(r[j][a]+rshift[a]);
 							rr += dr[a]*dr[a];
+
+							flopCount +=4;
 						}
 
 						/* Calculate potential & forces if rij<RCUT */
 						if (rr < rrCut) {
 							ri2 = 1.0/rr; ri6 = ri2*ri2*ri2; r1 = sqrt(rr);
 							fcVal = 48.0*ri2*ri6*(ri6-0.5) + Duc/r1;
+							flopCount += 10;
+
 							for (a=0; a<3; a++) {
 								f = fcVal*dr[a];
 								ra[i][a] += f;
 								ra[j][a] -= f;
+
+								flopCount +=3;
 							}
+
 							potEnergy += 4.0*ri6*(ri6-1.0) - Uc - Duc*(r1-RCUT);
+							flopCount +=8;
 						}
+
 					} /* Endif i<j */
 
 					j = lscl[j];
@@ -215,10 +245,9 @@ void ComputeAccel() {
 
 				i = lscl[i];
 			} /* Endwhile i not empty */
-
 		} /* Endfor neighbor cells, c1 */
 	} /* Endfor central cell, c */
-}
+} // End of function
 
 /*----------------------------------------------------------------------------*/
 void SingleStep() {
@@ -228,8 +257,11 @@ void SingleStep() {
 	int n,k;
 
 	HalfKick(); /* First half kick to obtain v(t+Dt/2) */
+
 	for (n=0; n<nAtom; n++) /* Update atomic coordinates to r(t+Dt) */
 		for (k=0; k<3; k++) r[n][k] = r[n][k] + DeltaT*rv[n][k];
+	flopCount += 2*3*nAtom;
+
 	ApplyBoundaryCond();
 	ComputeAccel(); /* Computes new accelerations, a(t+Dt) */
 	HalfKick(); /* Second half kick to obtain v(t+Dt) */
@@ -243,6 +275,8 @@ void HalfKick() {
 	int n,k;
 	for (n=0; n<nAtom; n++)
 		for (k=0; k<3; k++) rv[n][k] = rv[n][k] + DeltaTH*ra[n][k];
+
+	flopCount += 2*3*nAtom;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -255,6 +289,8 @@ void ApplyBoundaryCond() {
 		for (k=0; k<3; k++) 
 			r[n][k] = r[n][k] - SignR(RegionH[k],r[n][k])
 			                  - SignR(RegionH[k],r[n][k]-Region[k]);
+
+	flopCount += 3*3*nAtom;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -272,10 +308,15 @@ void EvalProps() {
 			vv = vv + rv[n][k]*rv[n][k];
 		kinEnergy = kinEnergy + vv;
 	}
+
+	flopCount += (2*3+1)*nAtom;
+
 	kinEnergy *= (0.5/nAtom);
 	potEnergy /= nAtom;
 	totEnergy = kinEnergy + potEnergy;
 	temperature = kinEnergy*2.0/3.0;
+
+	flopCount += 6;
 
 	/* Print the computed properties */
 	printf("%9.6f %9.6f %9.6f %9.6f\n",

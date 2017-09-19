@@ -7,8 +7,6 @@ import numpy as np
 
 UCellSize = np.arange(4,11)
 nAtoms = 4*np.power(UCellSize, 3)
-
-# Edit input file
 fnames = ["md", "lmd"]
 for j in range(2):
 	fname = fnames[j]
@@ -30,12 +28,6 @@ for j in range(2):
 		# Run MD program
 		subprocess.call(['gcc', '-O', '-o', exfile, cfile, '-lm'])
 		comm = './' + exfile + '<' + infile + '>out.txt'
-		os.system('./md<md.in>out.txt')
+		os.system(comm)
 		time.append(float(open('out.txt','r').read()))
-
 	print(time)
-
-# Generate convergence plots
-
-#plt.loglog(nAtoms, time, 'r-o')
-#plt.show()
