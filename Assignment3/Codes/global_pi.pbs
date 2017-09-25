@@ -1,0 +1,12 @@
+#!/bin/bash
+#PBS -l nodes=2:ppn=4
+#PBS -l walltime=00:00:59
+#PBS -o global_pi.out
+#PBS -j oe
+#PBS -N global
+#PBS -A lc_an2
+WORK_HOME=/home/rcf-proj/an2/kanale/Assignment3-ParallelComputationPi
+cd $WORK_HOME
+np=$(cat $PBS_NODEFILE | wc -l)
+mpirun -np 4 -machinefile $PBS_NODEFILE ./global_pi
+mpirun -np $np -machinefile $PBS_NODEFILE ./global_pi
