@@ -5,7 +5,7 @@
 #PBS -j oe
 #PBS -N global
 #PBS -A lc_an2
-WORK_HOME=/home/rcf-proj/an2/Your_ID
+WORK_HOME=/home/rcf-proj/an2/kanale/Assignment2-IntroToMPI
 cd $WORK_HOME
 np=$(cat $PBS_NODEFILE | wc -l)
 mpirun -np 4 -machinefile $PBS_NODEFILE ./global

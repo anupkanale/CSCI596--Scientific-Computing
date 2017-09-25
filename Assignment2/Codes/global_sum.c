@@ -5,11 +5,12 @@ int myid;    /* My rank */
 
 double global_sum(double partial) {
   /* Implement your own global summation here */
-	double partial, hisdone, mydone, partner;
+	double mydone, hisdone, partner;
 	int bitValue;
+	MPI_Status status;
 	
   mydone = partial;
-  for bitValue=1, bitValue<nprocs; bitValue*=2{
+  for(bitValue=1; bitValue<nprocs; bitValue*=2){
 		//partner := myid XOR 2-to-the-power-l;
   	partner=myid^bitValue;
     //send mydone to partner;
@@ -44,7 +45,7 @@ int main(int argc, char *argv[]) {
 }
 
 
-cd /home/rcf-proj/an2/kanale/
-mpicc -o global global.c -lm
+// cd /home/rcf-proj/an2/kanale/
+// mpicc -o global global.c -lm
 
-then use global.pbs
+// then use global.pbs
