@@ -1,0 +1,4 @@
+*.synctex.gz
+*.converter-to.pdf
+*.aux
+*.log
