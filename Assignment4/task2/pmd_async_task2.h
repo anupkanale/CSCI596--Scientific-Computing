@@ -28,10 +28,7 @@ EMPTY: Signifies the end of a linked list.
 /* Constants for the random number generator */
 #define D2P31M 2147483647.0
 #define DMUL 16807.0
-#define VMAX 5.0  // Max. velocity value to construct a velocity histogram
-#define NBIN 100  // # of bins in the histogram
 
-FILE *fpv;
 
 /* Variables------------------------------------------------------------
 
@@ -95,7 +92,7 @@ int stepCount;
 double DeltaTH;    /* Half the time step */
 double Uc, Duc;    /* Potential cut-off parameters */
 
-int gid,md;
+int gid, md_shit;
 MPI_Comm workers;
 
 /* Input data-----------------------------------------------------------
@@ -130,6 +127,7 @@ void RandVec3(double *p, double *seed) {
 }
 
 void init_params();
+void calc_pv();
 void set_topology();
 void init_conf();
 void single_step();

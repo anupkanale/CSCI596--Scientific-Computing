@@ -3,6 +3,84 @@ Program pmd.c performs parallel molecular-dynamics for Lennard-Jones
 systems using the Message Passing Interface (MPI) standard.
 ----------------------------------------------------------------------*/
 #include "pmd_async_task2.h"
+#define VMAX 5.0  // Max. velocity value to construct a velocity histogram
+#define NBIN 100  // # of bins in the histogram
+
+FILE *fpv;
+
+/*--------------------------------------------------------------------*/
+int main(int argc, char **argv) {
+/*--------------------------------------------------------------------*/
+  double cpu1,cpu;
+	int i,a;
+
+  MPI_Init(&argc,&argv); /* Initialize the MPI environment */
+  //MPI_Comm_rank(MPI_COMM_WORLD, &sid);  /* My processor ID */
+
+	MPI_Comm_rank(MPI_COMM_WORLD, &gid); //Global rank
+	md_shit = gid%2; // = 1 (MD workers) or 0 (analysis workers)
+	MPI_Comm_split(MPI_COMM_WORLD,md_shit,0,&workers);
+	MPI_Comm_rank(workers,&sid); // Rank in workers
+
+  /* Vector index of this processor */
+  vid[0] = sid/(vproc[1]*vproc[2]);
+  vid[1] = (sid/vproc[2])%vproc[1];
+  vid[2] = sid%vproc[2];
+
+	init_params();
+	if (md_shit) {
+		set_topology();
+		init_conf();
+		atom_copy();
+		compute_accel();
+	}
+	else
+		if (sid == 0)
+		 fpv = fopen("pv.dat","w");
+
+  //printf("%d\n", md_shit);
+  cpu1 = MPI_Wtime();
+  for (stepCount=1; stepCount<=StepLimit; stepCount++) {
+	if (md_shit){
+	 printf("%d\n", md_shit);
+	 single_step();
+	}
+	if (stepCount%StepAvg == 0) {
+		if (md_shit) {
+			// Send # of atoms, n, to rank gid-1 in MPI_COMM_WORLD
+			MPI_Send(&n, 1, MPI_INT, gid-1, 1000, MPI_COMM_WORLD);
+			// Compose message to be sent 
+			for(i=0; i<n; i++)
+				for(a=0; a<3; a++)
+					dbuf[3*i+a] = rv[i][a];
+			// Send velocities of n atoms to rank gid-1 in MPI_COMM_WORLD
+			MPI_Send(dbuf, 3*n, MPI_DOUBLE, gid-1, 2000, MPI_COMM_WORLD);
+			eval_props();
+		}
+		else {
+			// Receive # of atoms, n, from rank gid+1 in MPI_COMM_WORLD
+			MPI_Recv(&n, 1, MPI_INT, gid+1, 1000, MPI_COMM_WORLD,&status);
+			// Receive velocities of n atoms from rank gid+1 in MPI_COMM_WORLD
+			MPI_Recv(dbufr, 3*n, MPI_DOUBLE, gid+1, 2000, MPI_COMM_WORLD,&status);
+			for(i=0; i<n; i++)
+				for(a=0; a<3; a++)
+					rv[i][a] = dbufr[3*i+a];
+			calc_pv();
+		} // end if
+	} // end if
+  } // end for
+
+
+  cpu = MPI_Wtime() - cpu1;
+	if(md_shit && sid==0)
+		printf("CPU & COMT = %le %le\n",cpu,comt);
+	if(!md_shit && sid==0)
+		fclose(fpv);
+
+  MPI_Finalize(); /* Clean up the MPI environment */
+  return 0;
+}
+
 
 void calc_pv() {
   double lpv[NBIN],pv[NBIN],dv,v;
@@ -23,86 +101,6 @@ void calc_pv() {
   }
 }
 
-
-/*--------------------------------------------------------------------*/
-int main(int argc, char **argv) {
-/*--------------------------------------------------------------------*/
-  double cpu1;
-	int i,a;
-
-  MPI_Init(&argc,&argv); /* Initialize the MPI environment */
-  //MPI_Comm_rank(MPI_COMM_WORLD, &sid);  /* My processor ID */
-
-	MPI_Comm_rank(MPI_COMM_WORLD,&gid); //Global rank
-	md = gid%2; // = 1 (MD workers) or 0 (analysis workers)
-	MPI_Comm_split(MPI_COMM_WORLD,md,0,&workers);
-	MPI_Comm_rank(workers,&sid); // Rank in workers
-
-  /* Vector index of this processor */
-  vid[0] = sid/(vproc[1]*vproc[2]);
-  vid[1] = (sid/vproc[2])%vproc[1];
-  vid[2] = sid%vproc[2];
-
-//  init_params();
-// set_topology(); 
-//  init_conf();
-//  atom_copy();
-//  compute_accel(); /* Computes initial accelerations */ 
-
-	init_params();
-	if (md) {
-		set_topology();
-		init_conf();
-		atom_copy();
-		compute_accel();
-	}
-	else
-		if (sid == 0) fpv = fopen("pv.dat","w");
-
-  cpu1 = MPI_Wtime();
-  for (stepCount=1; stepCount<=StepLimit; stepCount++) {
-    // single_step(); 
-    // if (stepCount%StepAvg == 0) eval_props();
-
-		if (md) single_step();
-		if (stepCount%StepAvg == 0) {
-			if (md) {
-				// Send # of atoms, n, to rank gid-1 in MPI_COMM_WORLD
-				MPI_Send(&n, 1, MPI_INT, gid-1, 100, MPI_COMM_WORLD);
-				// Compose message to be sent 
-				for(i=0; i<N; i++)
-					for(a=0; a<3; a++)
-						dbuf[3*i+a] = rv[i][a];
-				// Send velocities of n atoms to rank gid-1 in MPI_COMM_WORLD
-				MPI_Send(dbuf, 3*n, MPI_DOUBLE, gid-1, 200, MPI_COMM_WORLD);
-				eval_props();
-			}
-			else {
-				// Receive # of atoms, n, from rank gid+1 in MPI_COMM_WORLD
-				MPI_Recv(&n, 1, MPI_INT, gid+1, 100, MPI_COMM_WORLD,&status);
-
-				// Receive velocities of n atoms from rank gid+1 in MPI_COMM_WORLD
-				MPI_Recv(dbufr, 3*n, MPI_DOUBLE, gid+1, 200, MPI_COMM_WORLD,&status);
-				for(i=0; i<N; i++)
-					for(a=0; a<3; a++)
-						rv[i][a] = dbuf[3*i+a];
-
-				calc_pv();
-			} // end if
-		} // end if
-  } // end for
-	
-  cpu = MPI_Wtime() - cpu1;
-  if (sid == 0) printf("CPU & COMT = %le %le\n",cpu,comt);
-
-	if md && sid==0
-		printf(cpu,comt)
-	else
-		
-
-  MPI_Finalize(); /* Clean up the MPI environment */
-  return 0;
-}
 
 /*--------------------------------------------------------------------*/
 void init_params() {
@@ -300,10 +298,14 @@ boundary-atom list, LSB, then sends & receives boundary atoms.
 
       nsd = lsb[ku][0]; /* # of atoms to be sent */
 
-			//--------------------------------------------------------------------------------------------------------
+	//----------start Modified----------------------------------------------------------------------------------------------
+			
+      MPI_Irecv(&nrc,1,MPI_INT,MPI_ANY_SOURCE,10,workers,&Request);
+			MPI_Send(&nsd,1,MPI_INT,inode,10,workers);
+			MPI_Wait(&Request, &status);
 
       /* Send & receive information on boundary atoms-----------------*/
-      MPI_iRecv(dbufr,3*nrc,MPI_DOUBLE,MPI_ANY_SOURCE,20,workers,&Request);
+      MPI_Irecv(dbufr,3*nrc,MPI_DOUBLE,MPI_ANY_SOURCE,20,workers,&Request);
 
 			/* Message buffering */
       for (i=1; i<=nsd; i++)
@@ -311,8 +313,8 @@ boundary-atom list, LSB, then sends & receives boundary atoms.
           dbuf[3*(i-1)+a] = r[lsb[ku][i]][a]-sv[ku][a]; 		
 
       MPI_Send(dbuf,3*nsd,MPI_DOUBLE,inode,20,workers);
-			MPI_Wait(&Request, &status)
-			//--------------------------------------------------------------------------------------------------------
+			MPI_Wait(&Request, &status);
+	//----------end Modified----------------------------------------------------------------------------------------------
 
 
       /* Message storing */
@@ -486,7 +488,7 @@ returns a new n' together with r[0:n'-1] & rv[0:n'-1].
 
 /* Local variables------------------------------------------------------
 
-mvque[6][NBMAX]: mvque[ku][0] is the # of to-be-moved atoms to neighbor 
+  mvque[6][NBMAX]: mvque[ku][0] is the # of to-be-moved atoms to neighbor 
   ku; MVQUE[ku][k>0] is the atom ID, used in r, of the k-th atom to be
   moved.
 ----------------------------------------------------------------------*/
@@ -499,7 +501,6 @@ mvque[6][NBMAX]: mvque[ku][0] is the # of to-be-moved atoms to neighbor
   for (ku=0; ku<6; ku++) mvque[ku][0] = 0;
 
   /* Main loop over x, y & z directions starts------------------------*/
-
   for (kd=0; kd<3; kd++) {
 
     /* Make a moved-atom list, mvque----------------------------------*/
@@ -533,8 +534,11 @@ mvque[6][NBMAX]: mvque[ku][0] is the # of to-be-moved atoms to neighbor
 
 			//--------------------------------------------------------------------------------------------------------
       /* Send & receive information on boundary atoms-----------------*/
+	MPI_Irecv(&nrc,1,MPI_INT,MPI_ANY_SOURCE,110,workers,&Request);
+	MPI_Send(&nsd,1,MPI_INT,inode,110,workers);
+	MPI_Wait(&Request, &status);
 
-      MPI_IRecv(dbufr,6*nrc,MPI_DOUBLE,MPI_ANY_SOURCE,120,workers,&Request);
+    MPI_Irecv(dbufr,6*nrc,MPI_DOUBLE,MPI_ANY_SOURCE,120,workers,&Request);
 			
 			/* Message buffering */
       for (i=1; i<=nsd; i++)
