@@ -1,0 +1,6 @@
+1. In set topology function, what is this part doing-- "/* Shift vector, sv */
+    for (a=0; a<3; a++) sv[ku][a] = al[a]*iv[ku][a];" ?
+
+2. What is myparity table?
+
+3.
