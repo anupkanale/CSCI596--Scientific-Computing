@@ -1,6 +1,6 @@
 #include "mpi.h"
 #include <stdio.h>
-#define NBIN 100000000
+#define NBIN 20000000
 
 int nprocs;  /* Number of processors */
 int myid;    /* My rank */
@@ -51,6 +51,7 @@ int main(int argc, char *argv[]) {
 	elTime = cpu2-cpu1;
 
 	if (myid==0){
+		printf("processors = %d\n", nprocs);
 		printf("PI = %le\n", pi);
 		printf("Time = %le\n", elTime);
 	}
