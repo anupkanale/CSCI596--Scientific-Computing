@@ -36,36 +36,37 @@
 %SetFonts
 \newcommand\Rey{\mbox{\textit{Re}}}
 
-\title{\vspace{-6ex} Assignment 4- Parallel Molecular Dynamics \\ {CSCI 596: Scientific Computing \& Visualization}  \vspace{-2ex}}
+\title{\vspace{-6ex} Assignment 5- Hybrid MPI + MP \\ {CSCI 596: Scientific Computing \& Visualization}  \vspace{-2ex}}
 \author{Anup V Kanale}
 \date{\vspace{-2ex}\today}							% Activate to display a given date or no date
 
 \begin{document}
 \maketitle \vspace{-5ex}
 
-This purpose of this assignment is run molecular dynamics on multiple processors to understand asynchronous message passing and "in-situ" data analysis.
-\vspace{-2ex} \section{Asynchronous Messages}
-In this section, we use \texttt{MPI\_Irecv()} and \texttt{MPI\_Send()} with an \texttt{MPI\_Wait()} in the program \texttt{pmd.c}. The asynchronous messages make the deadlock-avoidance scheme unnecessary, and thus there is no need to use different orders of send and receive calls for even and odd-parity processes.
+The goal of this assignment is to make use of both MPI and OpenMP in the supplied parallel molecular dynamics code. MPI is used to pass messages between processors, whereas OpenMP uses cores within a processor. 
+\vspace{-2ex}
+\section{Task I-- hmd.c \vspace{-2ex}}
+The modifications were made mainly in compute-accel() function (apart from \texttt{init\_params()}) and the main(). \texttt{compute\_accel} and the \texttt{main} function are attached in appendix. Apart from this, minor modifications were made in the header file, mainly to declare the number of threads. The rest of the code, which already has MPI was retained from \texttt{pmd.c}.
+\vspace{-2ex}
+\section{Task II-- Verification \vspace{-2ex}}
+To verify, the program \texttt{hmd.c} was run on HPC. The results (energy) match the parallel molecular dynamics code (\texttt{pmd.c}). The output of the run is shown below.
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[scale=0.6]{output2.png}
+ 	\caption{Output for task 2-- Verification}
+\end{figure}
 
-The new asynchronous implementation takes $5.13e-01$ seconds, whereas the original implementation takes $6.28e-01$ seconds. This observed speedup is $\approx 20\%$. The major modifications were made in the functions \texttt{atom\_copy} and \texttt{atom\_move}. To keep this report short, only these parts are shown in Appendix A.1.
+\section{Task III-- Scalability}
+In this task, the scalability of the program is tested w.r.t the number of threads. The plot is attached below.
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[scale=0.4]{scaling.png}
+	\caption{Output for task 3-- Scaling}
+\end{figure}
 
-\vspace{-2ex} \section{Communicators}
-In this section, we basically allocate half the processors for the computations, and the other half for analysing the data from the computations. Specifically, following the lecture note on ``In situ analysis of molecular dynamics simulation data using communicators'', \texttt{pmd.c} is modified such that as many number of processes as that for MD simulations are spawned to calculate the probability density function (PDF) for the atomic velocity.
-
- The plot of the probability density function is as shown below:
- \begin{figure}[!htbp]
- 	\centering
- 	\includegraphics[scale=0.22]{probDensFunc.eps}
- 	\caption{Probability density function}
- \end{figure}
-The major modification was in the \texttt{main} function, \texttt{calc\_pv()} was provided. Only the modified portion is shown in appendix A.2 to keep this report short.
 
 \appendix
-\section{Appendix}
-\subsection{Task I}
-\lstinputlisting{pmd_async.c}
-
-\subsection{Task II}
-\lstinputlisting{pmd_async_task2.c}
+\section{Appendix-- \texttt{hmd.c}}
+\lstinputlisting{hmd.c}
 
 \end{document}
