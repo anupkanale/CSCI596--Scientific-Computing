@@ -23,7 +23,7 @@ __device__ float d_SignR(float v,float x) {if (x > 0) return v; else return -v;}
 
 __global__ void gpu_histogram_kernel(float *r,float *nhis) {
 	int i,j,a,ih;
-  float rij,dr;
+	float rij,dr;
 
 	int iBlockBegin = (DN/gridDim.x)*blockIdx.x;
 	int iBlockEnd = min((DN/gridDim.x)*(blockIdx.x+1),DN);
@@ -57,8 +57,8 @@ Constructs a histogram NHIS for atomic-pair distribution.
 ----------------------------------------------------------------------*/
   float alth[3];
   float* nhis;  // Histogram array
-  float rhmax,drh,rij,dr,density,gr;
-  int a,ih,i,j;  
+  float rhmax,drh,density,gr;
+	int a,ih;
 
 	float* dev_r; // Atomic positions
 	float* dev_nhis; // Histogram
@@ -91,7 +91,7 @@ Constructs a histogram NHIS for atomic-pair distribution.
 
   density = n/(al[0]*al[1]*al[2]);
   /* Print out the histogram */
-  fp = fopen("pdf.d","w");
+  fp = fopen("pdf_gpu.d","w");
   for (ih=0; ih<NHBIN; ih++) {
     gr = nhis[ih]/(2*M_PI*pow((ih+0.5)*drh,2)*drh*density*n);
     fprintf(fp,"%e %e\n",(ih+0.5)*drh,gr);
