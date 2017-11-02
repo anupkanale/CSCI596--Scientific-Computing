@@ -73,7 +73,10 @@ The code is attached in Appendix A. The pair distribution function computed usin
 
 \vspace{-2ex}
 \section{Task II-- Parallel Computation of $\pi$ using MPI+OMP+CUDA}
-In this part, a triple-decker MPI+OpenMP+CUDA program was written to compute the value of $\pi$, by modifying the double-decker MPI+CUDA program provided in class, described in the lecture note on ``Hybrid MPI+OpenMP+CUDA Programming".
+In this part, a triple-decker MPI+OpenMP+CUDA program was written to compute the value of $\pi$, by modifying the double-decker MPI+CUDA program provided in class, described in the lecture note on ``Hybrid MPI+OpenMP+CUDA Programming". The formula used is
+	\begin{equation}
+		\pi = \int_{0}^{1} \frac{4}{1+x^2} dx \approxeq \Delta \sum_{i=0}^{N-1} \frac{4}{1+x_i^2}
+	\end{equation}
 
 \begin{figure}[!htbp] \label{fig:piSchematic}
 	\centering
@@ -89,6 +92,11 @@ The program can be found in appendix B, and the output of the program is as show
 	\includegraphics[scale=0.32]{piCalc.png}
 	\caption{Output of program for computation of $\pi$}
 \end{figure}
+
+\textbf{Important points}\begin{enumerate}
+ \item Finding compatible version of mpi, openMP and cuda is not trivial. And it varies from system to system.
+ \item pay attention to how the sequential thread index is calculated across blocks.
+\end{enumerate} 
 
 \pagebreak
 \appendix
