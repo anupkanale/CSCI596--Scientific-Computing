@@ -1,3 +1,7 @@
-mpicc -o pi3 -Xcompiler -fopenmp pi3.cu
-cat $PBS_NODEFILE | uniq > nodefile
-mpirun -np 2 -machinefile nodefile ./pi3 --bind-to none 
+To run the hybrid mpi-omp-cuda computation of pi, use the following:
+
+	mpicc -o pi3 -Xcompiler -fopenmp pi3.cu
+	cat $PBS_NODEFILE | uniq > nodefile
+	mpirun -np 2 -machinefile nodefile ./pi3 --bind-to none 
+
+NOTE: The right version of cuda and omp also have to be configured. But this varies from system to system.
