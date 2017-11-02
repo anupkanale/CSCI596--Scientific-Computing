@@ -1,0 +1,3 @@
+mpicc -o pi3 -Xcompiler -fopenmp pi3.cu
+cat $PBS_NODEFILE | uniq > nodefile
+mpirun -np 2 -machinefile nodefile ./pi3 --bind-to none 
